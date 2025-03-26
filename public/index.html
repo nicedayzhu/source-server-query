@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>起源引擎服务器查询</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --background-color: #f5f7fa;
+            --card-color: #ffffff;
+            --text-color: #333333;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+            border-bottom: 1px solid #e1e5eb;
+        }
+        
+        h1 {
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+        
+        .search-box {
+            background-color: var(--card-color);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+        
+        .server-info {
+            background-color: var(--card-color);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+        
+        .player-list {
+            background-color: var(--card-color);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .btn-primary {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+        }
+        
+        .server-name {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+        
+        .server-map {
+            font-size: 1.2rem;
+            color: var(--secondary-color);
+        }
+        
+        .player-count {
+            font-weight: 500;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e1e5eb;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: 500;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--secondary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            color: #e74c3c;
+            text-align: center;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #fdecea;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            th, td {
+                padding: 8px 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="container">
+        <header>
+            <h1>起源引擎服务器查询</h1>
+            <p class="text-muted">查询Source引擎游戏服务器的实时信息</p>
+        </header>
+        
+        <div class="search-box">
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <input v-model="serverIP" type="text" class="form-control" placeholder="服务器IP (例如: 127.0.0.1)" required>
+                </div>
+                <div class="col-md-2">
+                    <input v-model="serverPort" type="number" class="form-control" placeholder="端口" required>
+                </div>
+                <div class="col-md-2">
+                    <button @click="queryServer" class="btn btn-primary w-100">查询</button>
+                </div>
+            </div>
+        </div>
+        
+        <div v-if="loading" class="loading">
+            <div class="spinner"></div>
+        </div>
+        
+        <div v-if="error" class="error-message">
+            {{ error }}
+        </div>
+        
+        <div v-if="serverInfo" class="server-info">
+            <h2 class="server-name">{{ serverInfo.name }}</h2>
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>游戏:</strong> {{ serverInfo.game }}</p>
+                    <p><strong>地图:</strong> <span class="server-map">{{ serverInfo.map }}</span></p>
+                    <p><strong>版本:</strong> {{ serverInfo.version }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p class="player-count"><strong>玩家:</strong> {{ serverInfo.players.length }}/{{ serverInfo.maxPlayers }}</p>
+                    <p><strong>Bots:</strong> {{ serverInfo.bots }}</p>
+                    <p><strong>服务器类型:</strong> {{ serverInfo.serverType }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div v-if="serverInfo && serverInfo.players.length > 0" class="player-list">
+            <h3>玩家列表</h3>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>名称</th>
+                            <th>得分</th>
+                            <th>在线时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(player, index) in serverInfo.players" :key="index">
+                            <td>{{ index + 1 }}</td>
+                            <td>{{ player.name }}</td>
+                            <td>{{ player.score }}</td>
+                            <td>{{ formatDuration(player.duration) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.2.31/dist/vue.global.min.js"></script>
+    <script>
+        const { createApp, ref } = Vue;
+        
+        createApp({
+            setup() {
+                const serverIP = ref('');
+                const serverPort = ref('27015');
+                const serverInfo = ref(null);
+                const loading = ref(false);
+                const error = ref(null);
+                
+                const queryServer = async () => {
+                    if (!serverIP.value || !serverPort.value) {
+                        error.value = '请输入服务器IP和端口';
+                        return;
+                    }
+                    
+                    loading.value = true;
+                    error.value = null;
+                    serverInfo.value = null;
+                    
+                    try {
+                        const response = await fetch(`/query?ip=${serverIP.value}&port=${serverPort.value}`);
+                        const data = await response.json();
+                        
+                        if (data.error) {
+                            error.value = data.error;
+                        } else {
+                            serverInfo.value = data;
+                        }
+                    } catch (err) {
+                        error.value = '查询服务器时出错: ' + err.message;
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+                
+                const formatDuration = (seconds) => {
+                    if (!seconds) return '0分钟';
+                    const hours = Math.floor(seconds / 3600);
+                    const minutes = Math.floor((seconds % 3600) / 60);
+                    
+                    let result = '';
+                    if (hours > 0) result += `${hours}小时`;
+                    if (minutes > 0) result += `${minutes}分钟`;
+                    
+                    return result || '0分钟';
+                };
+                
+                return {
+                    serverIP,
+                    serverPort,
+                    serverInfo,
+                    loading,
+                    error,
+                    queryServer,
+                    formatDuration
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
